@@ -5647,10 +5647,13 @@ function bonPreparationChantier(){
 
   const w = window.open('','_blank','width=900,height=700');
   if(!w)return;
-  const chantier = d.chantier||'';
-  const client = d.client||'';
-  const dOut = d.dateOut ? fmtDate(d.dateOut) : '—';
-  const dBack = d.dateBack ? fmtDate(d.dateBack) : '—';
+  const chantier = gv('chantier')||d.chantier||'';
+  const client   = gv('client')||d.client||'';
+  const rawOut   = gv('dateOut')||d.dateOut||'';
+  const rawBack  = gv('dateBack')||d.dateBack||'';
+  const adresse  = (document.getElementById('cmd-adresse')?.value||d.adresse||'').trim();
+  const dOut  = rawOut  ? fmtDate(rawOut)  : '—';
+  const dBack = rawBack ? fmtDate(rawBack) : '—';
 
   // Build all pieces from all tentes
   const allPieces = {}; // {name: {qty, sec}}
@@ -5733,8 +5736,11 @@ function bonPreparationChantier(){
     <div class="meta">Bon de préparation interne<br>Imprimé le ${new Date().toLocaleDateString('fr-CH')}</div>
   </div>
   <div class="chantier-bar">
-    <div class="name">${esc(chantier)||'Chantier sans nom'} ${client?'— '+esc(client):''}</div>
-    <div class="dates">📅 ${dOut} → ${dBack}</div>
+    <div>
+      <div class="name">${esc(chantier)||'Chantier sans nom'} ${client?'— '+esc(client):''}</div>
+      ${adresse?'<div style="font-size:9pt;opacity:.85;margin-top:2px">📍 '+esc(adresse)+'</div>':''}
+    </div>
+    <div class="dates">📅 Sortie: ${dOut}<br>Retour: ${dBack}</div>
   </div>
 
   ${structRows?`<div class="sec-block">
