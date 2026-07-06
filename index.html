@@ -686,7 +686,9 @@ const P240={
   pt(H){return H==='H3'?'P2,6':H==='H4'?'P3,6':'P5';},
   mcab(N){return Math.ceil(N/4);},
   build(p){
-    const w=+p.width||20,L=+p.length||10,tn=Math.max(1,+p.tents||1);
+    const w=p.width!=null?String(+p.width||20):String(20);
+    const wNum=+w;
+    const L=+p.length||10,tn=Math.max(1,+p.tents||1);
     const H=p.height||'H3',sea=p.season||'ete',sab=p.sablieres||'non';
     const fix=p.fixation||'piquets',hf=p.heavyFloor||'non',lum=p.lumiere||'avec';
     if(L<=0)return{error:'Longueur invalide.'};
@@ -751,7 +753,7 @@ const P240={
       // BF intermédiaires: nb = (bf4+bf5) par pignon × nbre pignons
       const nBFtot = bfT; // total barres par pignon × pignons déjà calculé
       // Positions BF: toutes les largeurs ont x=5 (Petit); 16m a aussi x=8, 20/25m ont x=10
-      const hasBFgrand = (w===16||w===20||w===25);
+      const hasBFgrand = (wNum===16||wNum===20||wNum===25);
       // Répartition: chaque pignon a bf4+bf5 barres au total
       // Pour largeurs avec 2 positions: moitié Petit (x=5) + moitié Grand (x=8 ou 10)
       const nBFpetit = hasBFgrand ? Math.ceil(nBFtot/2) : nBFtot;
@@ -816,7 +818,7 @@ const P240={
     const remStr=remL>0?(' + 1×'+remL+'m'):'';
     const Ar2=[...A.entries()].map(([n,q])=>({name:n,qty:q})).sort((a,b)=>oi(a.name)-oi(b.name));
     const des=p.designation||tn+' tente(s) '+w+'×'+L+' – P240 – '+H+' – '+(sea==='hiver'?'HIVER':'ÉTÉ');
-    return{A:Ar2,B,des,surface:w*L,N,modules:N+(remL>0?1:0),arceauxParTente:N+1+(remL>0?1:0),badge:'P240 · '+w+'×'+L+'m · '+H+' · '+(sea==='hiver'?'Hiver':'Été'),optsLine:'N='+N+(remL>0?' +1×'+remL+'m':'')+' | Arc/tente='+(N+1+(remL>0?1:0))+' | CabMod='+cm+' | Sab='+sab+' | HF='+hf,totalWeight:Ar2.reduce((s,r)=>s+wt(r.name)*r.qty,0),rideauTotals:{2:r2T,3:r3T,5:r5T},baches:bT,pignons:piT,remL};
+    return{A:Ar2,B,des,surface:wNum*L,N,modules:N+(remL>0?1:0),arceauxParTente:N+1+(remL>0?1:0),badge:'P240 · '+w+'×'+L+'m · '+H+' · '+(sea==='hiver'?'Hiver':'Été'),optsLine:'N='+N+(remL>0?' +1×'+remL+'m':'')+' | Arc/tente='+(N+1+(remL>0?1:0))+' | CabMod='+cm+' | Sab='+sab+' | HF='+hf,totalWeight:Ar2.reduce((s,r)=>s+wt(r.name)*r.qty,0),rideauTotals:{2:r2T,3:r3T,5:r5T},baches:bT,pignons:piT,remL};
   }
 };
 
