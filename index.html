@@ -10356,7 +10356,7 @@ async function renderSaves(){
   el.innerHTML='<div style="font-size:11px;color:var(--text3);padding:4px">Chargement…</div>';
   let saves=[];
   if(SB.online){
-    const rows=await SB.get('tp_configs','?order=created_at.desc&limit=60');
+    const rows=await SB.get('tp_configs','?order=id.desc&limit=60');
     if(Array.isArray(rows)) saves=rows.map(r=>({_id:r.id,name:r.name,date:(r.created_at||'').slice(0,10),snap:r.snap}));
   }
   if(!saves.length) saves=JSON.parse(localStorage.getItem('cdm_saves')||'[]');
