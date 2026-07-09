@@ -1000,7 +1000,12 @@ const P334={
     addA('Piquet '+(p.piquetSize||'50')+' cm',d.piquet50[0]+d.piquet50[1]*(N-1)+plaqPerPig*4*pIn);
     addA('Piquet noir',8);
     addA('Goupille Pilier/Bracon P334',10*arc);
-    addA('Vis M20×140',d.visArc*arc);
+    // Vis M20×160: formule validée = vis_cs[w][H] × cs + vis_arc[w][H] × arc
+    const VIS_CS={'20.20':{H4:16,H6:24},'24.85':{H4:16,H6:24},'32':{H4:24,H6:24},'40.38':{H4:32,H6:32},'46':{H4:40,H6:48}};
+    const VIS_ARC={'20.20':{H4:4,H6:4},'24.85':{H4:4,H6:4},'32':{H4:8,H6:8},'40.38':{H4:8,H6:8},'46':{H4:8,H6:8}};
+    const _vcs=(VIS_CS[w]||{})[h334]||0;
+    const _varc=(VIS_ARC[w]||{})[h334]||0;
+    addA('Vis M20×160', _vcs*cs + _varc*arc);
     addA('Plaque de base P334',2*arc);addA('Goupille L P334',2*arc);
     addA('Plaque de base P240',d.plaqP240[0]+d.plaqP240[1]*(N-1)+plaqPerPig*pIn);
     addA('Goupille L P240',d.plaqP240[0]+d.plaqP240[1]*(N-1)+plaqPerPig*pIn);
@@ -1015,8 +1020,7 @@ const P334={
     addA('Plaque câble Droite',2*cs);
     addA('Plaque câble Double',d.cblDbl*cs);
     addA('Plaque câble Faîte', (h334==='H6' ? 12 : 4) * cs);
-    addA('Plaque câble Pilier', 4 * cs);
-    addA('Vis M20×50', 4 * cs);
+    addA('Plaque câble Pilier + Vis M20×50', 4 * cs);
     // Rideaux P334: ri5[0] includes 2 pignons base → scale pignon part
     // ri5T: (2+pIn) pignons × per_pig_ri5 rideaux + modules contribution
     const ri5T=Math.round(d.ri5[0] + d.ri5[1]*(N-1) + (d.ri5[0]/2)*pIn);
@@ -1029,7 +1033,48 @@ const P334={
     if(ri3T>0) addA('Barre tension rideau 3m',ri3T);
     const errs=[addB('Rideau 5m',ri5T,p.ri5_mode,p.ri5_noir,p.ri5_cristal,p.ri5_fenetre,p.ri5_secours),addB('Rideau 2m',ri2T,p.ri2_mode,p.ri2_noir,p.ri2_cristal,null),addB('Rideau 3m',ri3T,p.ri3_mode,p.ri3_noir,p.ri3_cristal,null),addB(d.bache,bacT,p.b_mode,p.b_noir,p.b_cristal,null),addB(d.pignLabel,pigT,p.p_mode,p.p_noir,p.p_cristal,null)].filter(e=>e&&e.error);
     if(errs.length)return{error:errs[0].error};
-    const P334_ORD=[/^Piquet noir/i,/^Barre tension petit/i,/^Plaque de base P240/i,/^Goupille L P240/i,/^Piquet \d/i,/^Goupille L P334/i,/^Plaque de base P334/i,/^Goupille Pilier/i,/^Vis M20.140/i,/^Ampoule/i,/^Plaque câble Gauche/i,/^Plaque câble Droite/i,/^Plaque câble pilier/i,/^Plaque câble simple/i,/^Plaque câble faite/i,/^Vis M20.160/i,/^Câble P/i,/^Câble 46/i,/^Rallonge câble/i,/^Faîte/i,/^Pilier P4/i,/^Ferme /i,/^Rallonge ferme/i,/^Tube 60.60 lumi/i,/^Tube 60.60$/i,/^Tube 120.80 rainuré/i,/^Tube 120.80 lisse/i,/^Bracon pilier/i,/^Bracon faite/i,/^Barre fermeture 4/i,/^Barre fermeture 5/i,/^Barre fermeture 7/i,/^Barre tension bâche 5/i,/^Barre tension bâche [23]/i,/^Tube 120.80 pignon coupe droite/i,/^Tube 120.80 pignons coupe gauche/i,/^Tube 120.80 sans pipo/i,/^Tube rond 5.* sans pipo/i,/^Tube rond 5.* avec pipo/i,/^Tube rond 2.* avec pipo/i,/^Tube rond 3.* sans pipo/i];
+    const P334_ORD=[
+      /^Piquet noir/i,
+      /^Barre tension petit/i,
+      /^Goupille L P334/i,
+      /^Goupille Pilier/i,
+      /^Goupille L P240/i,
+      /^Vis M20.160/i,
+      /^Plaque câble Droite/i,
+      /^Plaque câble Gauche/i,
+      /^Plaque câble Pilier/i,
+      /^Plaque câble Double/i,
+      /^Plaque câble Faît/i,
+      /^Vis M20.50/i,
+      /^Câble P[46]/i,
+      /^Câble 46/i,
+      /^Rallonge câble/i,
+      /^Plaque de base P240/i,
+      /^Piquet \d/i,
+      /^Plaque de base P334/i,
+      /^Faîte/i,
+      /^Ampoule/i,
+      /^Pilier P[46]/i,
+      /^Ferme /i,
+      /^Rallonge ferme/i,
+      /^Bracon pilier/i,
+      /^Bracon faite/i,
+      /^Tube 120.80 lisse/i,
+      /^Tube 120.80 rainuré/i,
+      /^Tube 120.80 pignon coupe droite/i,
+      /^Tube 120.80 pignons coupe gauche/i,
+      /^Tube 120.80 sans pipo/i,
+      /^Tube rond 5.* avec pipo/i,
+      /^Tube rond 5.* sans pipo/i,
+      /^Tube rond 2.* avec pipo/i,
+      /^Tube 60.60 lumi/i,
+      /^Tube 60.60$/i,
+      /^Barre fermeture 4/i,
+      /^Barre fermeture 5/i,
+      /^Barre fermeture 7/i,
+      /^Barre tension bâche 5/i,
+      /^Barre tension bâche [23]/i,
+    ];
     const p334oi=n=>{const i=P334_ORD.findIndex(r=>r.test(n));return i<0?999:i;};
     const Ar=[...A.entries()].map(([n,q])=>({name:n,qty:q})).sort((a,b)=>p334oi(a.name)-p334oi(b.name));
     // ── Module spécial automatique P334 (reste après N×5m) ──
