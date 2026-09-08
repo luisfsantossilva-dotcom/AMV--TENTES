@@ -8438,6 +8438,128 @@ function mobAddFromPanel(){
   syncStatus('✅ '+ref+' ajouté au stock', '#16a34a', 3000);
 }
 
+function stockUsageView(){
+  const q=(S.stockUsageSearch||'').trim().toLowerCase();
+  if(!q) return `<div style="padding:40px 24px;text-align:center;color:#9ca3af;font-size:13px">
+    <div style="font-size:32px;margin-bottom:8px">🔎</div>
+    Tape le nom d'une pièce dans le champ<br>
+    <span style="font-size:11px;color:#d1d5db">«&nbsp;Pièce → chantiers...&nbsp;»</span><br>
+    pour voir dans quels chantiers elle est utilisée.
+  </div>`;
+
+  // Chercher la pièce dans les configs de tous les chantiers
+  const results=[];
+  (CH_DATA||[]).forEach(ch=>{
+    if(!ch.configs||!ch.configs.length) return;
+    let totalQty=0;
+    const details=[];
+    ch.configs.forEach(cfg=>{
+      if(!cfg||!cfg.snap) return;
+      let sn={};
+      try{sn=JSON.parse(cfg.snap);}catch(e){return;}
+      const pr=cfg.type;
+      // Calculer le BOM de cette config
+      let res=null;
+      try{
+        if(pr==='p93') res=P93.build(sn);
+        else if(pr==='p240') res=P240.build(sn);
+        else if(pr==='lp') res=LP.build(sn);
+        else if(pr==='p334') res=P334.build(sn);
+        else if(pr==='pontdanse') res=PDANSE.build(sn);
+        else if(pr==='pagode') res=PAGODE.build({pagodeSz:+(sn.pagodeSz||3),pagodeNb:+(sn.pagodeNb||1),lumiere:sn.lumiere||'avec'});
+        else if(pr==='plancher') res=PLANCHER.build(sn);
+      }catch(e){}
+      if(!res||res.error) return;
+      const rows=[...(res.A||[]),...(res.B||[])];
+      rows.forEach(r=>{
+        if(!r.name||!r.qty) return;
+        const qty=(sn.overrides&&sn.overrides[r.name]!==undefined)?sn.overrides[r.name]:r.qty;
+        if(qty>0 && r.name.toLowerCase().includes(q)){
+          totalQty+=qty;
+          details.push({prof:pr,ref:sn.cfgRef||cfg.name||'',qty});
+        }
+      });
+      // Extra A et B
+      (sn._extraA||[]).forEach(r=>{if(r.name&&r.qty>0&&r.name.toLowerCase().includes(q)){totalQty+=r.qty;details.push({prof:pr,ref:sn.cfgRef||cfg.name||'',qty:r.qty});}});
+    });
+    if(totalQty>0) results.push({ch,totalQty,details});
+  });
+
+  // Trouver le nom exact le plus fréquent
+  const allNames={};
+  results.forEach(r=>r.details.forEach(d=>{
+    // Retrouver le nom exact
+    (CH_DATA||[]).forEach(ch=>{
+      (ch.configs||[]).forEach(cfg=>{
+        let sn={};try{sn=JSON.parse(cfg.snap||'{}');}catch(e){}
+        const pr=cfg.type;
+        let res=null;
+        try{
+          if(pr==='p93') res=P93.build(sn);
+          else if(pr==='p240') res=P240.build(sn);
+          else if(pr==='lp') res=LP.build(sn);
+          else if(pr==='p334') res=P334.build(sn);
+          else if(pr==='pontdanse') res=PDANSE.build(sn);
+        }catch(e){}
+        if(!res||res.error) return;
+        [...(res.A||[]),...(res.B||[])].forEach(row=>{
+          if(row.name&&row.name.toLowerCase().includes(q)){
+            allNames[row.name]=(allNames[row.name]||0)+1;
+          }
+        });
+      });
+    });
+  }));
+  const topName=Object.keys(allNames).sort((a,b)=>allNames[b]-allNames[a])[0]||q;
+
+  const totalGlobal=results.reduce((s,r)=>s+r.totalQty,0);
+  const PROF_C={p93:'#2a78d6',lp:'#1baf7a',p240:'#4a3aa7',p334:'#e34948',pontdanse:'#eda100',pagode:'#e87ba4',plancher:'#7c5c3b'};
+  const PROF_L={p93:'P93/50',lp:'LP',p240:'P240',p334:'P334',pontdanse:'Pont-danse',pagode:'Pagode',plancher:'Plancher'};
+
+  if(!results.length) return `<div style="padding:40px 24px;text-align:center;color:#9ca3af;font-size:13px">
+    <div style="font-size:28px;margin-bottom:8px">🔍</div>
+    Aucun chantier n'utilise <b style="color:#374151">"${esc(q)}"</b>.
+  </div>`;
+
+  // Trier par quantité décroissante
+  results.sort((a,b)=>b.totalQty-a.totalQty);
+
+  let html=`<div style="padding:14px 16px">
+  <div style="margin-bottom:12px">
+    <div style="font-size:13px;font-weight:800;color:var(--text)">${esc(topName)}</div>
+    <div style="font-size:11px;color:#6b7280;margin-top:2px">
+      Utilisée dans <b>${results.length}</b> chantier${results.length>1?'s':''} — total : <b style="color:#b91c1c">${totalGlobal}</b> pcs
+    </div>
+  </div>`;
+
+  results.forEach(({ch,totalQty,details})=>{
+    const dateLabel=ch.out?`<span style="font-size:10px;color:#9ca3af"> · ${ch.out}${ch.in?' → '+ch.in:''}</span>`:'';
+    // Grouper les details par profil
+    const byProf={};
+    details.forEach(d=>{
+      if(!byProf[d.prof]) byProf[d.prof]=0;
+      byProf[d.prof]+=d.qty;
+    });
+    const profBadges=Object.entries(byProf).map(([pr,qty])=>
+      `<span style="font-size:10px;padding:1px 7px;border-radius:10px;background:${PROF_C[pr]||'#888'}20;color:${PROF_C[pr]||'#888'};font-weight:700;border:1px solid ${PROF_C[pr]||'#888'}40">${PROF_L[pr]||pr} ×${qty}</span>`
+    ).join(' ');
+
+    html+=`<div style="border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:8px;background:var(--bg3)">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(ch.nom||'—')}</div>
+          <div style="font-size:11px;color:#6b7280;margin-top:1px">${esc(ch.client||'')}${dateLabel}</div>
+        </div>
+        <div style="font-size:20px;font-weight:800;color:#b91c1c;flex-shrink:0">${totalQty}</div>
+      </div>
+      <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:6px">${profBadges}</div>
+    </div>`;
+  });
+
+  html+='</div>';
+  return html;
+}
+
 function renderStock(){
   const inner=document.getElementById('stock-params-inner');
   if(inner){inner.innerHTML=stockParamsLeft();bindInputs();}
@@ -8451,6 +8573,7 @@ function renderStock(){
       return;
     }
     if(S.stockView==='dashboard') panel.innerHTML=stockDashboard();
+    else if(S.stockView==='usage') panel.innerHTML=stockUsageView();
     else if(S.stockSelected) panel.innerHTML=stockDetail();
     else panel.innerHTML=stockList();
   }
@@ -8494,10 +8617,11 @@ function stockParamsLeft(){
       </div>
     </div>
     <div style="display:flex;gap:4px;margin-bottom:8px">
-      <button onclick="S.stockView='list';S.stockSelected='';renderStock()" style="flex:1;padding:6px;border-radius:6px;border:1.5px solid ${S.stockView==='dashboard'?'#e5e7eb':'#b91c1c'};background:${S.stockView==='dashboard'?'#f9fafb':'#fef2f2'};font-size:10px;font-weight:700;cursor:pointer;font-family:var(--font);color:${S.stockView==='dashboard'?'#9ca3af':'#b91c1c'}">📦 Catalogue</button>
-      <button onclick="S.stockView='dashboard';S.stockSelected='';renderStock()" style="flex:1;padding:6px;border-radius:6px;border:1.5px solid ${S.stockView==='dashboard'?'#b91c1c':'#e5e7eb'};background:${S.stockView==='dashboard'?'#fef2f2':'#f9fafb'};font-size:10px;font-weight:700;cursor:pointer;font-family:var(--font);color:${S.stockView==='dashboard'?'#b91c1c':'#9ca3af'}">📊 Dashboard</button>
+      <button onclick="S.stockView='list';S.stockSelected='';S.stockUsageSearch='';renderStock()" style="flex:1;padding:6px;border-radius:6px;border:1.5px solid ${S.stockView==='dashboard'||S.stockView==='usage'?'#e5e7eb':'#b91c1c'};background:${S.stockView==='dashboard'||S.stockView==='usage'?'#f9fafb':'#fef2f2'};font-size:10px;font-weight:700;cursor:pointer;font-family:var(--font);color:${S.stockView==='dashboard'||S.stockView==='usage'?'#9ca3af':'#b91c1c'}">📦 Catalogue</button>
+      <button onclick="S.stockView='dashboard';S.stockSelected='';S.stockUsageSearch='';renderStock()" style="flex:1;padding:6px;border-radius:6px;border:1.5px solid ${S.stockView==='dashboard'?'#b91c1c':'#e5e7eb'};background:${S.stockView==='dashboard'?'#fef2f2':'#f9fafb'};font-size:10px;font-weight:700;cursor:pointer;font-family:var(--font);color:${S.stockView==='dashboard'?'#b91c1c':'#9ca3af'}">📊 Dashboard</button>
     </div>
-    <input id="stock-search" type="text" placeholder="🔍 Chercher une pièce..." oninput="S.stockSelected='';renderStock()" style="width:100%;margin-bottom:6px">
+    <input id="stock-search" type="text" placeholder="🔍 Chercher une pièce..." oninput="S.stockSelected='';S.stockUsageSearch='';renderStock()" style="width:100%;margin-bottom:6px">
+    <input id="stock-usage-search" type="text" placeholder="🔎 Pièce → chantiers..." oninput="S.stockUsageSearch=this.value;S.stockSelected='';S.stockView='usage';renderStock()" value="${S.stockUsageSearch||''}" style="width:100%;margin-bottom:6px;border-color:${S.stockView==='usage'?'var(--red)':'var(--border)'}">
     <div style="display:flex;gap:4px;margin-bottom:4px">
       <button onclick="stockAddCustom()" style="flex:1;padding:5px;border-radius:6px;border:1px solid var(--border);background:var(--bg3);font-size:10px;font-weight:700;cursor:pointer;font-family:var(--font)">➕ Ajouter</button>
       <button onclick="stockExportCSV()" style="flex:1;padding:5px;border-radius:6px;border:1px solid var(--border);background:var(--bg3);font-size:10px;font-weight:700;cursor:pointer;font-family:var(--font)">📤 CSV</button>
